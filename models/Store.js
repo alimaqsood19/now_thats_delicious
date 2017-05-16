@@ -56,8 +56,17 @@ storeSchema.pre('save', async function (next) {
     next();
 })
 
+storeSchema.statics.getTagsList = function() { //for aggregating
+    return this.aggregate([
+        {$unwind: '$tags'}, //unwinds it creates a duplication of the document of the specified tag
+        {$group: {_id: '$tags', count: {$sum: 1}}}, //group everything based on tag field, create a new field in each group
+        //called count, each time we group one of these items, the count will add +1 to the count
+        {$sort: {count: -1}} //sort it by descending 
+    ]);
+}
 
 var Store = mongoose.model('Store', storeSchema);
+
 
 module.exports = {
     Store: Store

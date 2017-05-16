@@ -98,6 +98,12 @@ var getStoreBySlug = async function (req, res, next) {
     res.render('store', {store: store, title: store.name});
 }
 
+var getStoresByTag = async function (req, res) {
+    const tags = await Store.getTagsList(); //model static function getTagsList that aggregates() groups by tags
+    const tag = req.params.tag; //clicking on tag adds it the params, allows us to display tag name as h2 header
+    res.render('tag', {tags: tags, title: 'Tags', tag}); //passes aggregated docs, title, and params.tag 
+}
+
 module.exports = {
     homePage: homePage,
     addStore: addStore,
@@ -107,5 +113,6 @@ module.exports = {
     updateStore,
     upload,
     resize,
-    getStoreBySlug
+    getStoreBySlug,
+    getStoresByTag
 }
