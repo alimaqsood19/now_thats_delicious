@@ -8,10 +8,11 @@ const bodyParser = require('body-parser');
 const passport = require('passport');
 const promisify = require('es6-promisify');
 const flash = require('connect-flash');
-const expressValidator = require('express-validator');
+const expressValidator = require('express-validator'); //Applies validation methods to every single req object, can call diff validation methods
 const routes = require('./routes/index');
 const helpers = require('./helpers');
 const errorHandlers = require('./handlers/errorHandlers');
+require('./handlers/passport');
 
 // create our Express app
 const app = express();
@@ -54,7 +55,8 @@ app.use(flash());
 app.use((req, res, next) => {
   res.locals.h = helpers;
   res.locals.flashes = req.flash();
-  res.locals.user = req.user || null;
+  res.locals.user = req.user || null; //passport adds the user object to each request so req.user is from passport, 
+                //then we pass it to our locals which is all the variables the template has and passes it along
   res.locals.currentPath = req.path;
   next();
 });

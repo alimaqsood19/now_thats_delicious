@@ -52,7 +52,7 @@ var resize = async function (req, res, next) { //saving image, recording file na
 var createStore = async function(req, res) { //add async infront of the function
     //res.json(req.body);
     const store = await (new Store(req.body)).save();
-    console.log(req.body);
+
 
    // await store.save(); //means will not perform any other tasks until the document has been saved to DB
     req.flash('success', `Successfully Created ${store.name}. Care to leave a review?`);
@@ -99,9 +99,15 @@ var getStoreBySlug = async function (req, res, next) {
 }
 
 var getStoresByTag = async function (req, res) {
-    const tags = await Store.getTagsList(); //model static function getTagsList that aggregates() groups by tags
-    const tag = req.params.tag; //clicking on tag adds it the params, allows us to display tag name as h2 header
-    res.render('tag', {tags: tags, title: 'Tags', tag}); //passes aggregated docs, title, and params.tag 
+    const tag = req.params.tag;
+    const tagQuery = tag || {$exists: true}; //if there is no tag it will show any store that has atleast one tag on it
+    const tagsPromise = Store.getTagsList(); //model static function getTagsList that aggregates() groups by tags
+    const storesPromise = Store.find({tags: tagQuery})//finding all docs with the specified tags
+    const result = await Promise.all([tagsPromise, storesPromise]); //Waits for all the promises to be fired of at the same time
+     //clicking on tag adds it the params, allows us to display tag name as h2 header
+    var tags = result[0];
+    var stores = result[1];
+    res.render('tag', {tags: tags, title: 'Tags', tag, stores}); //passes aggregated docs, title, and params.tag 
 }
 
 module.exports = {
