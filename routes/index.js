@@ -42,8 +42,12 @@ router.post('/register',
 
 router.get('/logout', authController.logout);
 
-router.get('/account', authController.isLoggedIn, userController.account);
-router.post('/account', catchErrors(userController.updateAccount))
+router.get('/account', authController.isLoggedIn, userController.account); //user profile
+router.post('/account', catchErrors(userController.updateAccount)); //changes to user profile
+router.post('/account/forgot', catchErrors(authController.forgot)); //Sends email to user if user exists, sets token and expiry
+router.get('/account/reset/:token', catchErrors(authController.reset)); //URL obtained from email
+router.post('/account/reset/:token', authController.confirmedPasswords, catchErrors(authController.update));
+//the post gets called once the user access the reset URL and hits submit
 
 module.exports = router;
 

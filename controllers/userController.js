@@ -85,8 +85,6 @@ const user = await User.findOneAndUpdate({ //{Query}, {Fields to be updated usin
     req.flash('success', 'Successfully Updated Profile!')
     res.redirect('back'); //sends them back to the endpoint from where they came
 
-
-   
 }
 
 

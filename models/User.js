@@ -20,6 +20,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: 'Please supply a name',
         trim: true 
+    },
+    resetPasswordToken: {
+        type: String 
+    },
+    resetPasswordExpires: {
+        type: Date
     }
 });
 //virtual field not stored in database, it gets created on the fly, in layout for the avatar it uses user.gravatar
