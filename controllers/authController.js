@@ -2,10 +2,14 @@ const passport = require('passport');//library that logs users in
 const {User} = require('../models/User.js');
 const crypto = require('crypto');
 const promisify = require('es6-promisify');
+const {send} = require('../handlers/mail.js');
 
-var login = passport.authenticate('local', { //logins the user automatically 
+var login = passport.authenticate('local', { //logins the user automatically, before this need a strategy which is defined in passport.js
+    //  upon logging in saves the id of the user in the session, then on every request, it grabs the user id from the session, 
+    //  searches the database for the user, finds the user and attaches the user to the request object so that you now have
+    //   all the user information in req.user inside of your express routes, thats what serialize and deserialize does
     //passport.authenticate middleware adds methods on the req object such as req.logout() or req.isAuthenticated() 
-    //since its a middleware itll call next(), this authenticate
+    //since its a middleware itll call next(), this method checks with db with the values passed to it with the POST request 
     failureRedirect: '/login',
     failureFlash: 'Failed Login!',
     successRedirect: '/',
@@ -40,12 +44,18 @@ var forgot = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
     await user.save(); //waits until user is saved, saves the new field values to the document
     const resetURL = `http://${req.headers.host}/account/reset/${user.resetPasswordToken}`; //${req.headers.host} the URL that we are using
-    req.flash('success', `You have been emailed a password reset link ${resetURL}`);
+    await send({ //The function we created to send the email, the object passed will be used options.user.email, options.subject 
+        user: user,
+        subject: 'Password Reset',
+        resetURL: resetURL,
+        filename: 'password-reset' //this filename property, renders out the html file password-reset.pug file 
+    })
+    req.flash('success', `You have been emailed a password reset link.`);
     res.redirect('/login');
 }
 
 var reset = async (req, res) => { //when user gets reset email, checks if token matches and not expired
-    const token = req.params.token;
+    const token = req.params.token; //end of url has the token
     const user = await User.findOne({
         resetPasswordToken: token,
         resetPasswordExpires: {$gt: Date.now()} //if the current time is greater than the set expiry time then token no longer valid, $gt = greater than special query

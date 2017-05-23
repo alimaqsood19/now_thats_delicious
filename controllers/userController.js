@@ -43,7 +43,7 @@ var register = async function(req, res, next) {
     //on a object, you need to specify which object to bind to, so it knows wehre to bind itself to
     await register(user, req.body.password); //from the passport-local-mongoose package, doesn't store the acutal password
     //stores a hashed password in the DB, register method, takes the new instance created as the first param and the pw as thes econd param
-
+    //field in DB is called 'hash'
     //CALLING REGISTER() automatically saves to DB, calls .save() once it hashes the pw etc
     next();
 
