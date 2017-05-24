@@ -51,6 +51,8 @@ var resize = async function (req, res, next) { //saving image, recording file na
 
 var createStore = async function(req, res) { //add async infront of the function
     //res.json(req.body);
+    req.body.author = req.user._id; //Since Passport gives us req.user of the currently logged in user, grabs the _id
+    //Then populates the author field in the Store model
     const store = await (new Store(req.body)).save();
 
 
@@ -72,9 +74,18 @@ var getStores = async function(req, res) {
     res.render('stores', {title: 'Stores', stores: stores});
 }
 
+var confirmOwner = (store, user)  => {
+    if (!store.author.equals(user._id)) {
+        throw Error('You must own a store in order to edit it!');
+    }
+};
+
 var editStore = async function(req, res) {
+    //Finds Store by store ID
     storeId = req.params.id
     const store = await Store.findById({_id: storeId});
+    //confirms if user is owner of store 
+    confirmOwner(store, req.user) //call the function to see if the store.author field === req.user._id again req.user is from passport when user logs in
     res.render('editStore', {title: `Edit ${store.name}`, store: store}); //passes store document to editStore.pug to
     //be used by the mixin function _storeForm.pug 
 }
@@ -91,7 +102,8 @@ var updateStore = async function(req, res) {
 }
 
 var getStoreBySlug = async function (req, res, next) {
-    const store = await Store.findOne({slug: req.params.slug});
+    const store = await Store.findOne({slug: req.params.slug}).populate('author'); //Finds the Object ID specified in the author
+    // field and populates that field instead of just the object ID
     if (!store) {
         return next();
     }
@@ -110,6 +122,22 @@ var getStoresByTag = async function (req, res) {
     res.render('tag', {tags: tags, title: 'Tags', tag, stores}); //passes aggregated docs, title, and params.tag 
 }
 
+var searchStores = async function(req, res) {
+    const stores = await Store.find({
+        $text: { //$text operator, basically saying look for the indexed documents as text, and search for the specified query 'q'
+            $search: req.query.q
+        }
+    }, {
+        score: { $meta: 'textScore'} //first query .find({what to look for}, {projection}) project in mongodb just means
+        //to add a field, and in this case the field is score, and the operator $meta 'textScore' basically assigns a score
+        ///to the matching documents based on how well the document matched the search term or terms, must be used in conjunction with $text query
+    }).sort({//this sorts the documents by score, highest score first
+        score: { $meta: 'textScore'}
+    }).limit(5); //Limits it to 5 documents with highest score
+
+    res.json(stores);
+}
+
 module.exports = {
     homePage: homePage,
     addStore: addStore,
@@ -120,5 +148,6 @@ module.exports = {
     upload,
     resize,
     getStoreBySlug,
-    getStoresByTag
+    getStoresByTag,
+    searchStores
 }

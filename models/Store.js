@@ -36,7 +36,18 @@ const storeSchema = new mongoose.Schema({
             required: true
         }
     },
-    photo: String 
+    photo: String,
+    author: {
+        type: mongoose.Schema.ObjectId, //ObjectId
+        ref: 'User', //tells mongodb, the author field is referenced to our User, points to another collection User that will provide the info
+        required: 'You must supply an author'
+    } 
+});
+
+//Define our indexes
+storeSchema.index({
+    name: 'text', //Index it AS, this is indexed as text so we can scrub through them efficiently, case sensitivity etc
+    description: 'text'
 });
 
 storeSchema.pre('save', async function (next) {

@@ -49,6 +49,12 @@ router.get('/account/reset/:token', catchErrors(authController.reset)); //URL ob
 router.post('/account/reset/:token', authController.confirmedPasswords, catchErrors(authController.update));
 //the post gets called once the user access the reset URL and hits submit
 
+/*
+ API
+ */
+
+router.get('/api/search', catchErrors(storeController.searchStores));
+
 module.exports = router;
 
 
