@@ -26,7 +26,10 @@ const userSchema = new mongoose.Schema({
     },
     resetPasswordExpires: {
         type: Date
-    }
+    },
+    hearts: [
+        {type: mongoose.Schema.ObjectId, ref: 'Store'}
+    ]
 });
 //virtual field not stored in database, it gets created on the fly, in layout for the avatar it uses user.gravatar
 //so whenever user.gravatar is used it creates the field then automatically and populates it with whatever is specified 

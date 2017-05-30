@@ -5,6 +5,7 @@ const {Store} = require('../models/Store.js');
 const multer = require('multer');
 const jimp = require('jimp');
 const uuid = require('uuid');
+const {User} = require('../models/User.js');
 
 const multerOptions = { //where to put the images in storage and what type of files
     storage: multer.memoryStorage(), //saving right into memory, dont want to keep the original uploaded file, 
@@ -70,10 +71,30 @@ var createStore = async function(req, res) { //add async infront of the function
 
 
 var getStores = async function(req, res) {
-    const stores = await Store.find();
-    res.render('stores', {title: 'Stores', stores: stores});
+    const page = req.params.page || 1;
+    const limit = 6;
+    const skip = (page * limit ) - limit; 
+    //Query database for a list of all stores
+    const storesPromise = Store
+        .find()
+        .skip(skip)
+        .limit(limit)
+        .sort({created: 'desc'});
+
+    const countPromise = Store.count(); //returns the total number of documents 
+
+    const [stores, count] = await Promise.all([storesPromise, countPromise]);
+
+    const pages = Math.ceil(count / limit); //.ceil gives the upper bound rounds up
+    if (!stores.length && skip) {
+        req.flash('info', `Invalid page ${page}`);
+        res.redirect(`/stores/page/${pages}`);
+        return;
+    }
+    res.render('stores', {title: 'Stores', stores: stores, page: page, pages: pages, count: count });
 }
 
+//Ensures store.author objectId is equal to logged in user Id
 var confirmOwner = (store, user)  => {
     if (!store.author.equals(user._id)) {
         throw Error('You must own a store in order to edit it!');
@@ -102,8 +123,8 @@ var updateStore = async function(req, res) {
 }
 
 var getStoreBySlug = async function (req, res, next) {
-    const store = await Store.findOne({slug: req.params.slug}).populate('author'); //Finds the Object ID specified in the author
-    // field and populates that field instead of just the object ID
+    const store = await Store.findOne({slug: req.params.slug}).populate('author reviews'); //Finds the Object ID specified in the author
+    // field and review field and populates that field instead of just the object ID
     if (!store) {
         return next();
     }
@@ -138,6 +159,66 @@ var searchStores = async function(req, res) {
     res.json(stores);
 }
 
+var mapStores = async (req, res) => {
+    const coordinates = [req.query.lng, req.query.lat].map(parseFloat); //an array of coordinate numbers, .map(parseFloat) converts to number from string
+    const q = {
+        location: {
+            $near:{ //$near operator in mongodb that searches for stores near the specified lat and lng
+                $geometry: {
+                    type: 'Point',
+                    coordinates: coordinates //the specified lat and lng values in the query
+                },
+                $maxDistance: 10000 //10km
+            }
+        }
+    }
+
+    const stores = await Store.find(q).select('slug name description location photo').limit(10); 
+    //.select only shows you the specified fields can also do -author -tags to NOT include those
+    //.limit limits to only 10 documents
+    res.json(stores);
+}
+
+var mapPage = (req, res) => {
+    res.render('map', {title: 'Map'});
+}
+
+var heartStore = async (req, res) => {
+    const hearts = req.user.hearts.map(function(obj) {
+        return obj.toString();
+    });
+    //check the hearts field to see if it already has the same store Id in it
+    //Since hearts is a field that is an array of objects, need to iterate over each object
+        //and covert it to just a string
+
+        // var operator;
+        // if (hearts.includes(req.params.id)) {
+        //     operator = '$pull';
+        // }else {
+        //     operator = '$addToSet';
+        // }
+        //Using ternary operator
+        const operator = hearts.includes(req.params.id) ? '$pull' : '$addToSet'; //$pull is to remove, $addToSet adds it only once for a specific user 
+        const user = await User.findByIdAndUpdate(req.user._id, 
+            { [operator]: {hearts: req.params.id} }, //computed property
+            {new: true}); //provides back the updated doc
+        //find a user with the specified id because they're logged in already, [operator] is replaced with either $pull or $addToSet
+        //so it'll either remove or add the store Id to the hearts field
+        res.json(user);
+}
+
+var getHearts = async (req, res) => {
+    const stores = await Store.find({
+        _id: { $in: req.user.hearts} //find any stores id that are in an array which in this case is req.user.hearts
+    });
+    res.render('stores', {title: 'Hearted Stores', stores});
+};
+
+var getTopStores = async (req, res) => {
+    const stores = await Store.getTopStores(); //adding method to model is a static
+    res.render('topStores', {title: 'Top Stores!', stores});
+}
+
 module.exports = {
     homePage: homePage,
     addStore: addStore,
@@ -149,5 +230,10 @@ module.exports = {
     resize,
     getStoreBySlug,
     getStoresByTag,
-    searchStores
+    searchStores,
+    mapStores,
+    mapPage,
+    heartStore,
+    getHearts,
+    getTopStores
 }
